@@ -1,16 +1,18 @@
 require ('dotenv').config();
 const requestProtcol = require(process.env.NVE_API.includes('https') ? 'https' : 'http');
-const mailgun = require('mailgun-js');
+const Mailgun = require('mailgun.js');
+const formData = require('form-data');
 const getIsoWeek = require('date-fns/getIsoWeek');
 const subWeeks = require('date-fns/subWeeks');
 const format = require('date-fns/format')
 const {getNveApiUrl, buildMailgunData} = require ('./utils');
 
-const mg = mailgun({
-    apiKey: process.env.MAILGUN_API_KEY,
-    domain: process.env.MAILGUN_DOMAIN,
-    host: process.env.MAILGUN_HOST,
-})
+const mailgun = new Mailgun(formData);
+const mg = mailgun.client({
+    username: 'api',
+    key: process.env.MAILGUN_API_KEY,
+    url: process.env.MAILGUN_HOST,
+});
 
 const lastWeek = subWeeks(new Date(), 1);
 const weekNumber = getIsoWeek(lastWeek);
@@ -27,12 +29,10 @@ requestProtcol.get(getNveApiUrl(apiDate), (apiResponse) => {
 
         const mailgunData = buildMailgunData(data, weekNumber);
 
-        mg.messages().send(mailgunData, (error, body) => {
-            console.log(body);
-            if (error) {
-                console.error(error);
-            }
-        });
+        mg.messages
+            .create(process.env.MAILGUN_DOMAIN, mailgunData)
+            .then(body => console.log(body))
+            .catch(err => console.error(err));
     })
 }).on('error', (err) => {
     console.log(err.message);
